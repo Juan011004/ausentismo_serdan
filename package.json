@@ -1,0 +1,47 @@
+{
+  "name": "ausentismo-serdan",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:stable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-stable.ps1",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "load:test": "node scripts/load-test-20.mjs",
+    "reconcile:dry-run": "node scripts/reconcile-sheets.mjs"
+    ,"verify:source-kpis": "node scripts/verify-source-kpis.mjs",
+    "import:dry-run": "node scripts/import-dry-run.mjs",
+    "import:execute": "node scripts/import-execute.mjs",
+    "preflight:production": "node scripts/preflight-production.mjs",
+    "smoke": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.0",
+    "clsx": "^2.1.1",
+    "googleapis": "^144.0.0",
+    "lucide-react": "^0.454.0",
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.1",
+    "sonner": "^1.7.4",
+    "tailwind-merge": "^2.6.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5",
+    "vitest": "^2.1.6"
+  }
+}

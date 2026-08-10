@@ -1,0 +1,9 @@
+import 'server-only'
+import { createHash,createHmac,timingSafeEqual } from 'crypto'
+import type { NextRequest } from 'next/server'
+import { rpc } from './supabase'
+const secret=()=>process.env.CSRF_SECRET||''
+export function csrfToken(email:string,now=Date.now()){const expires=now+3_600_000,payload=`${email.toLowerCase()}:${expires}`;return `${expires}.${createHmac('sha256',secret()).update(payload).digest('hex')}`}
+export function verifyCsrf(token:string|null,email:string,now=Date.now()){if(!token||!secret())return false;const [expires,signature]=token.split('.');if(!expires||!signature||Number(expires)<now)return false;const expected=createHmac('sha256',secret()).update(`${email.toLowerCase()}:${expires}`).digest('hex');return signature.length===expected.length&&timingSafeEqual(Buffer.from(signature),Buffer.from(expected))}
+export async function enforceMutation(request:NextRequest,email:string){if(process.env.MAINTENANCE_MODE==='true')throw new Error('MAINTENANCE');const length=Number(request.headers.get('content-length')??0);if(length>524_288)throw new Error('PAYLOAD_TOO_LARGE');const type=request.headers.get('content-type')??'';if(!type.toLowerCase().startsWith('application/json'))throw new Error('UNSUPPORTED_MEDIA');const origin=request.headers.get('origin'),expected=request.nextUrl.origin;if(!origin||new URL(origin).origin!==expected)throw new Error('CSRF');if(!verifyCsrf(request.headers.get('x-csrf-token'),email))throw new Error('CSRF');const key=createHash('sha256').update(`${email}:${request.nextUrl.pathname}`).digest('hex');if(!await rpc<boolean>('consume_rate_limit',{p_key:key,p_limit:30,p_window_seconds:60}))throw new Error('RATE_LIMIT')}
+export function safeLog(event:string,details:Record<string,unknown>={}){console.info(JSON.stringify({level:'info',event,at:new Date().toISOString(),...details}))}
