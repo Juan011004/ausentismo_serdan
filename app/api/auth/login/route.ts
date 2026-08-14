@@ -9,8 +9,11 @@ import { createHash } from 'crypto'
 const schema = z.object({ email: z.string().trim().email().max(254), password: z.string().min(8).max(200) })
 
 export async function POST(request: Request) {
+  const contentType=request.headers.get('content-type')?.toLowerCase()??''
+  const formSubmission=contentType.startsWith('application/x-www-form-urlencoded')||contentType.startsWith('multipart/form-data')
   try {
-    const input = schema.parse(await request.json())
+    const raw=formSubmission?Object.fromEntries(await request.formData()):await request.json()
+    const input = schema.parse(raw)
     const ip=request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()??'unknown'
     const digest=(value:string)=>createHash('sha256').update(value).digest('hex')
     const [ipAllowed,accountAllowed]=await Promise.all([
@@ -20,9 +23,9 @@ export async function POST(request: Request) {
     if(!ipAllowed||!accountAllowed)throw new Error('RATE_LIMIT')
     const user = await signInWithPassword(input.email, input.password)
     await getAccessProfile(user.email!)
-    return NextResponse.json({ ok: true })
+    return formSubmission?NextResponse.redirect(new URL('/',request.url),303):NextResponse.json({ ok: true })
   } catch (error) {
     clearAuthCookies()
-    return apiError(error)
+    return formSubmission?NextResponse.redirect(new URL('/login?error=auth',request.url),303):apiError(error)
   }
 }
