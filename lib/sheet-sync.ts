@@ -1,5 +1,5 @@
 import 'server-only'
-import { appendValues,readValues,recordsSpreadsheetId,sheets } from '@/lib/google-sheets'
+import { appendValues,ensureSheetColumns,readValues,recordsSpreadsheetId,sheets } from '@/lib/google-sheets'
 import { rpc,supabaseRequest } from '@/lib/supabase'
 import { safeLog } from '@/lib/security'
 
@@ -11,7 +11,9 @@ export async function syncPendingRecords(limit=100):Promise<SyncResult>{
  const jobs=await rpc<Job[]>('take_sync_jobs',{p_limit:limit})
  if(!jobs.length)return{claimed:0,synced:0,failed:0}
  try{
-  const tab=process.env.GOOGLE_CONSOLIDATED_SHEET??'Consolidado',sheetId=recordsSpreadsheetId(),ids=(await readValues(sheetId,`'${tab}'!J:J`)).flat().map(String),rowsById=new Map(ids.map((id,index)=>[id,index+1]))
+  const tab=process.env.GOOGLE_CONSOLIDATED_SHEET??'Consolidado',sheetId=recordsSpreadsheetId()
+  await ensureSheetColumns(sheetId,tab,10)
+  const ids=(await readValues(sheetId,`'${tab}'!J:J`)).flat().map(String),rowsById=new Map(ids.map((id,index)=>[id,index+1]))
   const requested=jobs.map(j=>j.record_id).join(','),records=await supabaseRequest<Row[]>(`daily_records?id=in.(${requested})&select=id,regional,gerencia,cedula,nombre,cargo,source_position,fecha_ingreso,operational_date,reported_value`),byId=new Map(records.map(r=>[r.id,r])),updates:{range:string;values:unknown[][]}[]=[],inserts:unknown[][]=[]
   for(const job of jobs){const r=byId.get(job.record_id);if(!r)throw new Error(`RECORD_NOT_FOUND:${job.record_id}`);const row=rowsById.get(job.record_id);if(row)updates.push({range:`'${tab}'!I${row}`,values:[[r.reported_value]]});else inserts.push([r.regional,r.gerencia,r.cedula,r.nombre,r.cargo,r.source_position,r.fecha_ingreso??'-',r.operational_date,r.reported_value,job.record_id])}
   if(updates.length)await sheets.spreadsheets.values.batchUpdate({spreadsheetId:sheetId,requestBody:{valueInputOption:'USER_ENTERED',data:updates}})

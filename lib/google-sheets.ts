@@ -25,3 +25,12 @@ export async function readValues(spreadsheetId: string, range: string) {
 export async function appendValues(spreadsheetId: string, range: string, values: unknown[][]) {
   return sheets.spreadsheets.values.append({ spreadsheetId, range, valueInputOption: 'USER_ENTERED', insertDataOption: 'INSERT_ROWS', requestBody: { values } })
 }
+
+export async function ensureSheetColumns(spreadsheetId:string,title:string,minimum:number){
+  const response=await sheets.spreadsheets.get({spreadsheetId,fields:'sheets.properties(sheetId,title,gridProperties.columnCount)'})
+  const properties=response.data.sheets?.find(sheet=>sheet.properties?.title===title)?.properties
+  if(properties?.sheetId==null)throw new Error(`SHEET_NOT_FOUND:${title}`)
+  const current=properties.gridProperties?.columnCount??0
+  if(current>=minimum)return
+  await sheets.spreadsheets.batchUpdate({spreadsheetId,requestBody:{requests:[{appendDimension:{sheetId:properties.sheetId,dimension:'COLUMNS',length:minimum-current}}]}})
+}
