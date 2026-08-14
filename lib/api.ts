@@ -22,6 +22,7 @@ export function apiError(error: unknown) {
   if (message === 'MAINTENANCE') return NextResponse.json({ error: 'El sistema está temporalmente en modo de mantenimiento.' }, { status: 503 })
   if (message === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'La solicitud supera el tamaño permitido.' }, { status: 413 })
   if (message === 'UNSUPPORTED_MEDIA') return NextResponse.json({ error: 'El contenido debe enviarse como JSON.' }, { status: 415 })
+  if (message.startsWith('AUTH_ADMIN_422')) return NextResponse.json({ error: 'No se pudo crear el usuario. El correo probablemente ya está registrado.' }, { status: 409 })
   if (message.includes('23505') || message.includes('IDEMPOTENCY_CONFLICT')) return NextResponse.json({ error: 'Registro duplicado o requestId reutilizado con datos diferentes.' }, { status: 409 })
   console.error('api_error', { code: message.split(':')[0] })
   return NextResponse.json({ error: 'No fue posible completar la operación.' }, { status: 500 })

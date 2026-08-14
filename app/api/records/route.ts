@@ -5,6 +5,7 @@ import { saveBatchSchema } from '@/lib/schemas'
 import { enforceMutation, safeLog } from '@/lib/security'
 import { canAccess } from '@/lib/permissions'
 import { validateRecordBatch } from '@/lib/domain'
+import { syncPendingRecords } from '@/lib/sheet-sync'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +17,8 @@ export async function POST(request: NextRequest) {
     const problem=validateRecordBatch(parsed.data.records); if(problem)return NextResponse.json({error:problem},{status:422})
     const result=await saveRecords(parsed.data.requestId,user.email,parsed.data.records)
     safeLog('attendance_batch_saved',{requestId:parsed.data.requestId,count:result.count,replayed:result.replayed,role:user.role})
-    return NextResponse.json(result)
+    let sync={claimed:0,synced:0,failed:0,pending:false}
+    try{sync={...(await syncPendingRecords()),pending:false}}catch{sync={claimed:0,synced:0,failed:0,pending:true}}
+    return NextResponse.json({...result,sync})
   } catch (error) { return apiError(error) }
 }
